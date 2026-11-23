@@ -1,60 +1,41 @@
 import requests
-import json
 import time
-import sys
-from platform import system
 import os
-import subprocess
-import http.server
-import socketserver
 import threading
-import random
+from flask import Flask
 
-class MyHandler(http.server.SimpleHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'text/plain')
-        self.end_headers()
-        self.wfile.write(b"-- SERVER RUNNING>>RAJ MISHRA H3R3")
+# Flask ऐप इनिशियलाइज़ करें
+app = Flask(__name__)
 
-    def do_HEAD(self):
-        # UptimeRobot Free Tier HEAD requests support karne ke liye
-        self.send_response(200)
-        self.send_header('Content-type', 'text/plain')
-        self.end_headers()
+# UptimeRobot और ब्राउज़र के लिए रूट (ताकि सर्वर 24/7 ज़िंदा रहे)
+@app.route('/')
+def home():
+    return "-- SERVER RUNNING>>RAJ MISHRA H3R3"
 
-    def log_message(self, format, *args):
-        # Continuous ping requests se console logs overflow hone se rokne ke liye
-        return
-
-def execute_server():
-    # Render dynamic port allot karta hai, local pe 3000 chalega
-    PORT = int(os.environ.get("PORT", 3000))
-    
-    socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer(("", PORT), MyHandler) as httpd:
-        print("Server running at http://localhost:{}".format(PORT))
-        httpd.serve_forever()
-
+# आपका ओरिजिनल मैसेज भेजने वाला फंक्शन
 def send_messages_from_file():
-    with open('convo.txt', 'r') as file:
-        convo_id = file.read().strip()
+    try:
+        with open('convo.txt', 'r') as file:
+            convo_id = file.read().strip()
 
-    with open('File.txt', 'r') as file:
-        messages = file.readlines()
+        with open('File.txt', 'r') as file:
+            messages = file.readlines()
 
-    num_messages = len(messages)
+        num_messages = len(messages)
 
-    with open('tokennum.txt', 'r') as file:
-        tokens = file.readlines()
-    num_tokens = len(tokens)
-    max_tokens = min(num_tokens, num_messages)
+        with open('tokennum.txt', 'r') as file:
+            tokens = file.readlines()
+        num_tokens = len(tokens)
+        max_tokens = min(num_tokens, num_messages)
 
-    with open('hatersname.txt', 'r') as file:
-        haters_name = file.read().strip()
+        with open('hatersname.txt', 'r') as file:
+            haters_name = file.read().strip()
 
-    with open('time.txt', 'r') as file:
-        speed = int(file.read().strip())
+        with open('time.txt', 'r') as file:
+            speed = int(file.read().strip())
+    except FileNotFoundError as e:
+        print(f"[!] Error: File not found - {e}")
+        return
 
     def liness():
         print('\033[1;92m' + '•─────────────────────────────────────────────────────────•')
@@ -98,14 +79,18 @@ def send_messages_from_file():
             print("\n[+] All messages sent. Restarting the process...\n")
         except Exception as e:
             print("[!] An error occurred: {}".format(e))
+            time.sleep(5) # एरर आने पर 5 सेकंड रुक कर दोबारा ट्राय करेगा
 
-def main():
-    server_thread = threading.Thread(target=execute_server)
-    server_thread.daemon = True  # Ensures background HTTP execution alongside the main loop
-    server_thread.start()
-
-    # Continue with the message sending loop
+# मैसेज लूप को बैकग्राउंड में चलाने के लिए थ्रेड
+def start_background_task():
     send_messages_from_file()
 
 if __name__ == '__main__':
-    main()
+    # 1. बैकग्राउंड थ्रेड स्टार्ट करें (ताकि मैसेज भेजना शुरू हो जाए)
+    t = threading.Thread(target=start_background_task)
+    t.daemon = True
+    t.start()
+    
+    # 2. Uppcoder जो PORT देगा, उस पर Flask सर्वर रन करें
+    port = int(os.environ.get("PORT", 8000))
+    app.run(host='0.0.0.0', port=port)
